@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>อัลบั้มรูปของฉัน</title>
+<meta name="theme-color" content="#e0567a">
+<meta name="description" content="สร้างและตกแต่งอัลบั้มรูปของคุณเอง ใส่รูป ตกแต่งปก จัดหมวดหมู่ด้วยโฟลเดอร์ ปรับซูม/ครอบตัดรูป ส่งออกเป็นรูปภาพหรือ PDF">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="อัลบั้มรูป">
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600&family=Kanit:wght@400;600&family=Sriracha&display=swap" rel="stylesheet">
+<script>
+/* diagnostic banner: shows the error on screen instead of a silent white page */
+(function(){function b(m){var d=document.getElementById('errbar');if(!d){d=document.createElement('div');d.id='errbar';d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99;background:#b00020;color:#fff;padding:10px 14px;font:14px/1.4 system-ui,sans-serif;white-space:pre-wrap';(document.body||document.documentElement).appendChild(d)}d.textContent+=m+'\n'}
+window.addEventListener('error',function(e){var t=e.target;if(t&&(t.src||t.href)&&t!==window){if((t.src||t.href).indexOf(location.origin)!==0)return;b('โหลดไฟล์ไม่สำเร็จ: '+(t.src||t.href)+'\n(เช็คว่าอัปโหลดไฟล์นี้ขึ้น GitHub ครบและชื่อตรงตัวพิมพ์เล็ก/ใหญ่)')}else b('เกิดข้อผิดพลาด: '+e.message+(e.filename?' ('+e.filename.split('/').pop()+':'+e.lineno+')':'')+'\nถ้าเพิ่งอัปเดต ให้แน่ใจว่าอัปโหลดทุกไฟล์ใหม่ทับของเดิมทั้งหมด แล้วกด Ctrl+Shift+R')},true)})();
+</script>
+<link rel="stylesheet" href="css/style.css?v=3">
+</head>
+<body>
+<section id="v-login"><div class="box center">
+<div style="font-size:3rem">📸</div><h1>อัลบั้มรูปของฉัน</h1>
+<p class="mut">ใส่อีเมลเพื่อเข้าใช้งาน</p>
+<input type="email" id="em" placeholder="you@example.com" autocomplete="email" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false">
+<button class="btn big" style="margin-top:0" id="lg">เข้าสู่ระบบ</button>
+<p class="mut">เวอร์ชันเดโม: ไม่ต้องใช้รหัสผ่านและไม่ส่งอีเมลยืนยัน อัลบั้มถูกเก็บในเบราว์เซอร์นี้ตามอีเมลที่ใช้เข้า</p>
+</div></section>
+
+<section id="v-home">
+<header><h2 id="who"></h2><button id="out">ออกจากระบบ</button></header>
+<div class="menu">
+<button class="btn" id="mNew">✨ สร้างอัลบั้มใหม่</button>
+<button id="mList">📚 อัลบั้มที่เคยสร้าง</button>
+<button id="mTrash">🗑️ ถังขยะ</button>
+</div></section>
+
+<section id="v-list"><header><button class="bk">← กลับ</button><h2>อัลบั้มที่เคยสร้าง</h2></header><div class="row" id="fRow" style="margin-bottom:12px"></div><div class="grid" id="gList"></div></section>
+
+<section id="v-trash"><header><button class="bk">← กลับ</button><h2>ถังขยะ</h2></header><p class="mut">อัลบั้มในถังขยะจะถูกลบถาวรหลังจาก 15 วัน</p><div class="grid" id="gTrash"></div></section>
+
+<section id="v-design">
+<header><button class="bk">← กลับ</button><h2>ตกแต่งอัลบั้ม</h2></header>
+<div class="pvs"><div class="pvc"><div class="cap">ตัวอย่างปก</div><div id="pvC"></div></div><div class="pvc"><div class="cap">ตัวอย่างหน้าในอัลบั้ม</div><div id="pvP"></div></div></div>
+<div id="ctl"></div>
+<button class="btn big" id="go">✨ เริ่มสร้างอัลบั้มของฉัน</button>
+</section>
+
+<section id="v-book"><header><button class="bk">← กลับ</button><h2 id="bt"></h2></header>
+<div class="stage">
+<div class="book" id="book"><div id="pg"></div><div class="cv" id="cv"></div></div>
+<p class="mut" id="hint">👆 แตะที่อัลบั้มเพื่อเปิดปก</p>
+<div class="nav" id="nav" style="display:none"><button id="pp">‹</button><span id="pi"></span><button id="pn">›</button></div>
+<p class="mut" id="prog"></p>
+<div class="acts">
+<button id="backCover">📕 กลับไปหน้าปก</button>
+<button id="editCover">🖼️ แก้ไขรูปบนปก</button>
+<button id="editLayout">🎨 แก้ไขปก/เลย์เอาท์</button>
+<button id="expImg">🖼️ ส่งออกรูปภาพ (PNG)</button>
+<button id="expPdf">📄 ส่งออก PDF</button>
+<button class="btn" id="keep">💾 เก็บอัลบั้ม</button>
+<button id="trash">🗑️ ทิ้งอัลบั้ม</button>
+</div>
+</div></section>
+
+<input type="file" id="file" accept="image/*" hidden>
+<div id="toast"></div>
+<button id="inst" class="btn" style="display:none;position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));border-radius:24px;z-index:8">⬇️ ติดตั้งแอป</button>
+
+<div class="zmodal" id="zoomModal">
+<div class="zbox" id="zBox"><img id="zImg" alt=""></div>
+<div class="zctl"><span>🔍</span><input type="range" id="zRange" min="1" max="4" step="0.02" value="1"><button id="zReset">รีเซ็ต</button></div>
+<div class="row"><button id="zChange">🔄 เปลี่ยนรูป</button><button id="zDel">🗑️ ลบรูปนี้</button></div>
+<div class="row"><button id="zX">ยกเลิก</button><button class="btn" id="zOk">ตกลง</button></div>
+<p class="mut" style="color:#ddd;text-align:center">ลากรูปเพื่อเลื่อนตำแหน่ง (ครอบตัด) · ใช้แถบเลื่อน / บีบสองนิ้ว / ลูกกลิ้งเมาส์เพื่อซูม</p>
+</div>
+
+<div class="zmodal" id="expModal">
+<div class="xbox">
+<h3 style="margin:0">ส่งออกเป็นรูปภาพ (PNG)</h3>
+<button class="btn" id="expOne">หน้านี้</button>
+<button id="expAll">ทุกหน้า (รวมเป็นภาพเดียว)</button>
+<button id="expX">ยกเลิก</button>
+<p class="mut" style="margin:0">อยากได้ไฟล์แยกทีละหน้าคมชัดสูง ใช้ปุ่ม "ส่งออก PDF" ได้เลย</p>
+</div>
+</div>
+<script src="js/app.js?v=3"></script>
+</body>
+</html>
