@@ -106,6 +106,10 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
 
 .stpbar{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}#stpnav{margin:12px 0}#ctl input[type=color]{width:44px;height:32px;padding:0;vertical-align:middle}
 .cslot{-webkit-mask-image:linear-gradient(to right,transparent,#000 var(--fe),#000 calc(100% - var(--fe)),transparent),linear-gradient(to bottom,transparent,#000 var(--fe),#000 calc(100% - var(--fe)),transparent);-webkit-mask-composite:source-in;mask-image:linear-gradient(to right,transparent,#000 var(--fe),#000 calc(100% - var(--fe)),transparent),linear-gradient(to bottom,transparent,#000 var(--fe),#000 calc(100% - var(--fe)),transparent);mask-composite:intersect}.pst{z-index:3}
+.rw{position:relative;overflow:hidden;container-type:size}
+.rimg{position:absolute;display:block;object-fit:cover;pointer-events:none}
+.zbox{container-type:size}
+.zmodal{overflow-y:auto;justify-content:safe center}
 </style>
 </head>
 <body>
@@ -162,6 +166,8 @@ input[type=email],input[type=text]{width:100%;padding:10px 12px;border:1px solid
 <div class="zmodal" id="zoomModal">
 <div class="zbox" id="zBox"><img id="zImg" alt=""></div>
 <div class="zctl"><span>🔍</span><input type="range" id="zRange" min="0.5" max="4" step="0.02" value="1"><button id="zReset">รีเซ็ต</button></div>
+<div class="zctl"><span>🔄</span><input type="range" id="zRot" min="0" max="360" step="1" value="0"><b id="zRotV" style="min-width:4ch">0°</b></div>
+<div class="row"><button id="zRL">↺ 90°</button><button id="zRR">↻ 90°</button><button id="zRotReset">รีเซ็ตการหมุน</button></div>
 <div class="row"><button id="zChange">🔄 เปลี่ยนรูป</button><button id="zDel">🗑️ ลบรูปนี้</button></div>
 <div class="row"><button id="zX">ยกเลิก</button><button class="btn" id="zOk">ตกลง</button></div>
 <p class="mut" style="color:#ddd;text-align:center">ลากรูปเพื่อเลื่อนตำแหน่ง (ครอบตัด) · ใช้แถบเลื่อน / บีบสองนิ้ว / ลูกกลิ้งเมาส์เพื่อซูม</p>
@@ -219,12 +225,16 @@ const rowsOf=(n,v)=>{const V=LO[n];return V[(v||0)%V.length]};
 /* Photo value: {u:dataURL, s:zoom(1-4), px,py:0..1 focal point}.  px,py=.5 is centred.
    Rendered as object-fit:cover + object-position + transform-origin, so a crop never
    shows blank edges even if the album layout (slot shape) is changed later. */
-const pval=v=>{if(!v)return null;if(typeof v==='string')return{u:v,s:1,px:.5,py:.5};const s=v.s||1;
+const pval0=v=>{if(!v)return null;if(typeof v==='string')return{u:v,s:1,px:.5,py:.5};const s=v.s||1;
 if(v.px!==undefined)return{u:v.u,s,px:clamp(v.px,0,1),py:clamp(v.py,0,1)};
 const f=x=>s>1?clamp(.5-(x||0)*s/100/(s-1),0,1):.5; /* migrate old translate% model */
 return{u:v.u,s,px:f(v.tx),py:f(v.ty)}};
-const imgStyle=v=>`object-position:${v.px*100}% ${v.py*100}%;transform-origin:${v.px*100}% ${v.py*100}%;transform:scale(${v.s})`;
-const slotInner=(v,ed)=>v?`<img class="ph" alt="" src="${v.u}" style="${imgStyle(v)}">`:(ed?'<div class="ph e"><span>📷</span>แตะเพื่อใส่รูป</div>':'<div class="ph e"><span>📷</span></div>');
+const pval=v=>{const o=pval0(v);if(o)o.r=(v&&+v.r)||0;return o};
+const imgStyle=v=>{const o=`object-position:${v.px*100}% ${v.py*100}%;`;
+if(!(v.r%360))return o+`transform-origin:${v.px*100}% ${v.py*100}%;transform:scale(${v.s})`;
+const t=v.r*Math.PI/180,c=+(Math.abs(Math.cos(t))*1.01).toFixed(4),s=+(Math.abs(Math.sin(t))*1.01).toFixed(4),x=(v.px-.5)*100,y=(v.py-.5)*100;
+return o+`left:50%;top:50%;width:calc(${c}*100cqw + ${s}*100cqh);height:calc(${s}*100cqw + ${c}*100cqh);max-width:none;transform-origin:50% 50%;transform:translate(-50%,-50%) rotate(${v.r}deg) translate(${x}%,${y}%) scale(${v.s}) translate(${-x}%,${-y}%)`};
+const slotInner=(v,ed)=>v?(v.r%360?`<div class="ph rw"><img class="rimg" alt="" src="${v.u}" style="${imgStyle(v)}"></div>`:`<img class="ph" alt="" src="${v.u}" style="${imgStyle(v)}">`):(ed?'<div class="ph e"><span>📷</span>แตะเพื่อใส่รูป</div>':'<div class="ph e"><span>📷</span></div>');
 const photoMap=(a,key)=>key.startsWith('cov-')?a.cov.photos:a.photos;
 
 function cover(a,ed){const cn=(a.cov&&a.cov.n)||0;let layer='';
@@ -285,12 +295,12 @@ photoMap(p.obj,p.key)[p.key]={u:du,s:1,px:.5,py:.5};await p.after('add')};
 /* empty slot -> pick a photo; filled slot -> editor (zoom / crop / change / remove) */
 function onSlot(obj,slotEl,after){const key=slotEl.dataset.k;if(pval(photoMap(obj,key)[key]))openEditor(obj,key,slotEl,after);else pickFor(obj,key,after)}
 
-let zT=null,zS=1,zPx=.5,zPy=.5,zSrc='',zRi=1;
+let zT=null,zS=1,zPx=.5,zPy=.5,zSrc='',zRi=1,zR=0;
 const zBox=$('#zBox'),zImg=$('#zImg');
-function applyZ(){zImg.style.objectPosition=`${zPx*100}% ${zPy*100}%`;zImg.style.transformOrigin=`${zPx*100}% ${zPy*100}%`;zImg.style.transform=`scale(${zS})`;$('#zRange').value=zS}
+function applyZ(){zImg.style.cssText=imgStyle({px:zPx,py:zPy,s:zS,r:zR});$('#zRange').value=zS;$('#zRot').value=zR;$('#zRotV').textContent=Math.round(zR)+'°'}
 function openEditor(obj,key,slotEl,after){const v=pval(photoMap(obj,key)[key]);if(!v)return;
-zT={obj,key,after};zS=v.s;zPx=v.px;zPy=v.py;zSrc=v.u;
-const r=slotEl.getBoundingClientRect(),maxW=Math.min(340,innerWidth*.85),maxH=innerHeight*.5;
+zT={obj,key,after};zS=v.s;zPx=v.px;zPy=v.py;zSrc=v.u;zR=v.r||0;
+const r=slotEl.getBoundingClientRect(),maxW=Math.min(340,innerWidth*.85),maxH=innerHeight*.4;
 let w=maxW,h=w*(r.height/r.width);if(h>maxH){h=maxH;w=h*(r.width/r.height)}
 zBox.style.width=w+'px';zBox.style.height=h+'px';
 zImg.onload=()=>{zRi=zImg.naturalWidth/zImg.naturalHeight||1};zImg.src=zSrc;zRi=zImg.naturalWidth?zImg.naturalWidth/zImg.naturalHeight:1;
@@ -298,20 +308,25 @@ $('#zDel').textContent='🗑️ ลบรูปนี้';$('#zDel').dataset.s='
 applyZ();$('#zoomModal').style.display='flex'}
 const closeEditor=()=>{$('#zoomModal').style.display='none';zT=null};
 /* how far (px) the picture can travel on each axis at the current zoom */
-const travel=()=>{const W=zBox.clientWidth,H=zBox.clientHeight,cw=Math.max(W,H*zRi),ch=Math.max(H,W/zRi);return{x:zS*cw-W,y:zS*ch-H}};
+const travel=()=>{let W=zBox.clientWidth,H=zBox.clientHeight;if(zR%360){const a=zR*Math.PI/180,c=Math.abs(Math.cos(a)),s=Math.abs(Math.sin(a)),w=W,h=H;W=(w*c+h*s)*1.01;H=(w*s+h*c)*1.01}const cw=Math.max(W,H*zRi),ch=Math.max(H,W/zRi);return{x:zS*cw-W,y:zS*ch-H}};
 const zp=new Map();let zPinch=0,zPinchS=1;
 const setZoom=s=>{zS=clamp(s,.5,4);applyZ()};
 zBox.addEventListener('pointerdown',e=>{zp.set(e.pointerId,{x:e.clientX,y:e.clientY});zBox.setPointerCapture(e.pointerId);
 if(zp.size===2){const[a,b]=[...zp.values()];zPinch=Math.hypot(a.x-b.x,a.y-b.y)||1;zPinchS=zS}});
 zBox.addEventListener('pointermove',e=>{const p=zp.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
 if(zp.size===2){const[a,b]=[...zp.values()];setZoom(zPinchS*Math.hypot(a.x-b.x,a.y-b.y)/zPinch);return}
-const t=travel();if(t.x>1)zPx=clamp(zPx-dx/t.x,0,1);if(t.y>1)zPy=clamp(zPy-dy/t.y,0,1);applyZ()});
+const t=travel(),a=zR*Math.PI/180,co=Math.cos(a),si=Math.sin(a),ux=dx*co+dy*si,uy=-dx*si+dy*co;if(t.x>1)zPx=clamp(zPx-ux/t.x,0,1);if(t.y>1)zPy=clamp(zPy-uy/t.y,0,1);applyZ()});
 ['pointerup','pointercancel'].forEach(t=>zBox.addEventListener(t,e=>{zp.delete(e.pointerId)}));
 zBox.addEventListener('wheel',e=>{e.preventDefault();setZoom(zS*(e.deltaY<0?1.1:1/1.1))},{passive:false});
 $('#zRange').oninput=e=>setZoom(+e.target.value);
 $('#zReset').onclick=()=>{zS=1;zPx=.5;zPy=.5;applyZ()};
+const setRot=r=>{zR=clamp(Math.round(r),0,360);applyZ()};
+$('#zRot').oninput=e=>setRot(+e.target.value);
+$('#zRL').onclick=()=>setRot((zR-90+360)%360);
+$('#zRR').onclick=()=>setRot((zR+90)%360);
+$('#zRotReset').onclick=()=>setRot(0);
 $('#zX').onclick=closeEditor;
-$('#zOk').onclick=async()=>{const t=zT;if(!t)return;photoMap(t.obj,t.key)[t.key]={u:zSrc,s:zS,px:zPx,py:zPy};closeEditor();await t.after('crop')};
+$('#zOk').onclick=async()=>{const t=zT;if(!t)return;photoMap(t.obj,t.key)[t.key]={u:zSrc,s:zS,px:zPx,py:zPy,r:zR%360};closeEditor();await t.after('crop')};
 $('#zChange').onclick=()=>{const t=zT;if(!t)return;closeEditor();pickFor(t.obj,t.key,t.after)};
 $('#zDel').onclick=async e=>{const t=zT;if(!t)return;if(!e.target.dataset.s){e.target.dataset.s=1;e.target.textContent='กดอีกครั้งเพื่อยืนยันลบ';return}
 delete photoMap(t.obj,t.key)[t.key];closeEditor();await t.after('del')};
@@ -422,7 +437,9 @@ for(let t=10*k;t<len+20*k;t+=20*k)c.fillRect(-len,len/2-t-10*k,2*len,10*k)}
 else{c.fillStyle=css;c.fillRect(x,y,w,h)}
 c.restore()}
 /* identical to the on-screen model: cover-fit, object-position(px,py), then scale(s) about (px,py) */
-function drawPhoto(g,img,v,x,y,w,h,r){const iw=img.naturalWidth,ih=img.naturalHeight,sc=Math.max(w/iw,h/ih),cw=iw*sc,ch=ih*sc,ox=v.px*w,oy=v.py*h;
+function drawPhotoR(g,img,v,x,y,w,h,r){const iw=img.naturalWidth,ih=img.naturalHeight,t=v.r*Math.PI/180,c=Math.abs(Math.cos(t))*1.01,s=Math.abs(Math.sin(t))*1.01,ew=w*c+h*s,eh=w*s+h*c,sc=Math.max(ew/iw,eh/ih),cw=iw*sc,ch=ih*sc,fx=(v.px-.5)*ew,fy=(v.py-.5)*eh;
+g.save();rrPath(g,x,y,w,h,r||0);g.clip();g.translate(x+w/2,y+h/2);g.rotate(t);g.translate(fx,fy);g.scale(v.s,v.s);g.translate(-fx,-fy);g.drawImage(img,-ew/2-v.px*(cw-ew),-eh/2-v.py*(ch-eh),cw,ch);g.restore()}
+function drawPhoto(g,img,v,x,y,w,h,r){if(v.r%360)return drawPhotoR(g,img,v,x,y,w,h,r);const iw=img.naturalWidth,ih=img.naturalHeight,sc=Math.max(w/iw,h/ih),cw=iw*sc,ch=ih*sc,ox=v.px*w,oy=v.py*h;
 g.save();rrPath(g,x,y,w,h,r||0);g.clip();g.translate(x+ox,y+oy);g.scale(v.s,v.s);g.translate(-ox,-oy);g.drawImage(img,-v.px*(cw-w),-v.py*(ch-h),cw,ch);g.restore()}
 const segmenter=window.Intl&&Intl.Segmenter?new Intl.Segmenter('th',{granularity:'word'}):null;
 function wrapText(g,text,maxW){const toks=segmenter?[...segmenter.segment(text)].map(s=>s.segment):[...text],lines=[];let cur='';
